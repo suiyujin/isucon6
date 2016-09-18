@@ -1,0 +1,6 @@
+.*
+!/.gitignore
+alp.zip
+settings/
+percona.deb
+bin/diff-highlight
