@@ -1,5 +1,6 @@
 .*
 !/.gitignore
+!config/.keep
 alp.zip
 settings/
 percona.deb
