@@ -5,3 +5,6 @@ alp.zip
 settings/
 percona.deb
 bin/diff-highlight
+isuda.dump.gz
+isutar.dump.gz
+mysql-slog.log
