@@ -23,7 +23,6 @@ module Isuda
     set :db_user, ENV['ISUDA_DB_USER'] || 'root'
     set :db_password, ENV['ISUDA_DB_PASSWORD'] || ''
     set :dsn, ENV['ISUDA_DSN'] || 'dbi:mysql:db=isuda'
-    set :db_isutar, ENV['ISUTAR_DSN'] || 'isutar'
     set :session_secret, 'tonymoris'
     set :isupam_origin, ENV['ISUPAM_ORIGIN'] || 'http://localhost:5050'
     set :isutar_origin, ENV['ISUTAR_ORIGIN'] || 'http://localhost:5001'
@@ -62,23 +61,6 @@ module Isuda
               username: settings.db_user,
               password: settings.db_password,
               database: attrs['db'],
-              encoding: 'utf8mb4',
-              init_command: %|SET SESSION sql_mode='TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY'|,
-            )
-            mysql.query_options.update(symbolize_keys: true)
-            mysql
-          end
-      end
-
-      def db_star
-        Thread.current[:db_star] ||=
-          begin
-            _, _, attrs_part = settings.dsn.split(':', 3)
-            attrs = Hash[attrs_part.split(';').map {|part| part.split('=', 2) }]
-            mysql = Mysql2::Client.new(
-              username: settings.db_user,
-              password: settings.db_password,
-              database: settings.db_isutar,
               encoding: 'utf8mb4',
               init_command: %|SET SESSION sql_mode='TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY'|,
             )
@@ -134,7 +116,12 @@ module Isuda
       end
 
       def load_stars(keyword)
-        stars = db_star.xquery(%| select * from star where keyword = ? |, keyword).to_a
+        isutar_url = URI(settings.isutar_origin)
+        isutar_url.path = '/stars'
+        isutar_url.query = URI.encode_www_form(keyword: keyword)
+        body = Net::HTTP.get(isutar_url)
+        stars_res = JSON.parse(body)
+        stars_res['stars']
       end
 
       def redirect_found(path)
