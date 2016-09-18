@@ -97,20 +97,23 @@ module Isuda
       end
 
       def htmlify(content, keywords)
+        # binding.pry
+        # 全てのキーワードを正規表現のOR条件でつなげる
         pattern = keywords.map {|k| Regexp.escape(k[:keyword]) }.join('|')
         kw2hash = {}
-        hashed_content = content.gsub(/(#{pattern})/) {|m|
-          matched_keyword = $1
-          "isuda_#{Digest::SHA1.hexdigest(matched_keyword)}".tap do |hash|
-            kw2hash[matched_keyword] = hash
-          end
+        # descriptionのキーワード部分をhashに変換
+        escaped_content = Rack::Utils.escape_html(content).gsub(/(#{pattern})/) {|m|
+          keyword_url = url("/keyword/#{Rack::Utils.escape_path(m)}")
+          '<a href="%s">%s</a>' % [keyword_url, Rack::Utils.escape_html(m)]
         }
-        escaped_content = Rack::Utils.escape_html(hashed_content)
-        kw2hash.each do |(keyword, hash)|
-          keyword_url = url("/keyword/#{Rack::Utils.escape_path(keyword)}")
-          anchor = '<a href="%s">%s</a>' % [keyword_url, Rack::Utils.escape_html(keyword)]
-          escaped_content.gsub!(hash, anchor)
-        end
+        # html escape
+        # escaped_content = Rack::Utils.escape_html(hashed_content)
+        # kw2hash.each do |(keyword, hash)|
+        #   # hashをリンクで置き換えてる
+        #   keyword_url = url("/keyword/#{Rack::Utils.escape_path(keyword)}")
+        #   anchor = '<a href="%s">%s</a>' % [keyword_url, Rack::Utils.escape_html(keyword)]
+        #   escaped_content.gsub!(hash, anchor)
+        # end
         escaped_content.gsub(/\n/, "<br />\n")
       end
 
