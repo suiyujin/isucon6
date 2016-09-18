@@ -52,6 +52,10 @@ module Isuda
     end
 
     helpers do
+      def select_keywords
+        db.xquery(%| select keyword from entry order by character_length(keyword) desc |)
+      end
+
       def db
         Thread.current[:db] ||=
           begin
@@ -92,8 +96,7 @@ module Isuda
         ! validation['valid']
       end
 
-      def htmlify(content)
-        keywords = db.xquery(%| select keyword from entry order by character_length(keyword) desc |)
+      def htmlify(content, keywords)
         pattern = keywords.map {|k| Regexp.escape(k[:keyword]) }.join('|')
         kw2hash = {}
         hashed_content = content.gsub(/(#{pattern})/) {|m|
@@ -149,8 +152,9 @@ module Isuda
         LIMIT #{per_page}
         OFFSET #{per_page * (page - 1)}
       |)
+      keywords = select_keywords
       entries.each do |entry|
-        entry[:html] = htmlify(entry[:description])
+        entry[:html] = htmlify(entry[:description], keywords)
         entry[:stars] = load_stars(entry[:keyword])
       end
 
@@ -233,8 +237,9 @@ module Isuda
       keyword = params[:keyword] or halt(400)
 
       entry = db.xquery(%| select * from entry where keyword = ? |, keyword).first or halt(404)
+      keywords = select_keywords
       entry[:stars] = load_stars(entry[:keyword])
-      entry[:html] = htmlify(entry[:description])
+      entry[:html] = htmlify(entry[:description], keywords)
 
       locals = {
         entry: entry,
