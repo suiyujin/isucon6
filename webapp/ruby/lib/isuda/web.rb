@@ -14,6 +14,7 @@ require 'pry'
 
 module Isuda
   class Web < ::Sinatra::Base
+    # use Rack::Lineprof, profile: '/home/isucon/webapp/ruby/lib/isuda/web.rb'
     enable :protection
     enable :sessions
 
