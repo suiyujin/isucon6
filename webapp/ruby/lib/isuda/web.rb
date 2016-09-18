@@ -14,7 +14,6 @@ require 'pry'
 
 module Isuda
   class Web < ::Sinatra::Base
-    # use Rack::Lineprof, profile: '/home/isucon/webapp/ruby/lib/isuda/web.rb'
     enable :protection
     enable :sessions
 
@@ -115,23 +114,12 @@ module Isuda
       end
 
       def htmlify(content, keywords)
-        # binding.pry
-        # 全てのキーワードを正規表現のOR条件でつなげる
         pattern = keywords.map {|k| Regexp.escape(k[:keyword]) }.join('|')
         kw2hash = {}
-        # descriptionのキーワード部分をhashに変換
         escaped_content = Rack::Utils.escape_html(content).gsub(/(#{pattern})/) {|m|
           keyword_url = url("/keyword/#{Rack::Utils.escape_path(m)}")
           '<a href="%s">%s</a>' % [keyword_url, Rack::Utils.escape_html(m)]
         }
-        # html escape
-        # escaped_content = Rack::Utils.escape_html(hashed_content)
-        # kw2hash.each do |(keyword, hash)|
-        #   # hashをリンクで置き換えてる
-        #   keyword_url = url("/keyword/#{Rack::Utils.escape_path(keyword)}")
-        #   anchor = '<a href="%s">%s</a>' % [keyword_url, Rack::Utils.escape_html(keyword)]
-        #   escaped_content.gsub!(hash, anchor)
-        # end
         escaped_content.gsub(/\n/, "<br />\n")
       end
 
