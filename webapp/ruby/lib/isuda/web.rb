@@ -52,6 +52,10 @@ module Isuda
     end
 
     helpers do
+      def select_keywords
+        db.xquery(%| select keyword from entry order by character_length(keyword) desc |)
+      end
+
       def db
         Thread.current[:db] ||=
           begin
@@ -92,22 +96,24 @@ module Isuda
         ! validation['valid']
       end
 
-      def htmlify(content)
-        keywords = db.xquery(%| select keyword from entry order by character_length(keyword) desc |)
+      def htmlify(content, keywords)
+        # binding.pry
+        # 全てのキーワードを正規表現のOR条件でつなげる
         pattern = keywords.map {|k| Regexp.escape(k[:keyword]) }.join('|')
         kw2hash = {}
-        hashed_content = content.gsub(/(#{pattern})/) {|m|
-          matched_keyword = $1
-          "isuda_#{Digest::SHA1.hexdigest(matched_keyword)}".tap do |hash|
-            kw2hash[matched_keyword] = hash
-          end
+        # descriptionのキーワード部分をhashに変換
+        escaped_content = Rack::Utils.escape_html(content).gsub(/(#{pattern})/) {|m|
+          keyword_url = url("/keyword/#{Rack::Utils.escape_path(m)}")
+          '<a href="%s">%s</a>' % [keyword_url, Rack::Utils.escape_html(m)]
         }
-        escaped_content = Rack::Utils.escape_html(hashed_content)
-        kw2hash.each do |(keyword, hash)|
-          keyword_url = url("/keyword/#{Rack::Utils.escape_path(keyword)}")
-          anchor = '<a href="%s">%s</a>' % [keyword_url, Rack::Utils.escape_html(keyword)]
-          escaped_content.gsub!(hash, anchor)
-        end
+        # html escape
+        # escaped_content = Rack::Utils.escape_html(hashed_content)
+        # kw2hash.each do |(keyword, hash)|
+        #   # hashをリンクで置き換えてる
+        #   keyword_url = url("/keyword/#{Rack::Utils.escape_path(keyword)}")
+        #   anchor = '<a href="%s">%s</a>' % [keyword_url, Rack::Utils.escape_html(keyword)]
+        #   escaped_content.gsub!(hash, anchor)
+        # end
         escaped_content.gsub(/\n/, "<br />\n")
       end
 
@@ -149,8 +155,9 @@ module Isuda
         LIMIT #{per_page}
         OFFSET #{per_page * (page - 1)}
       |)
+      keywords = select_keywords
       entries.each do |entry|
-        entry[:html] = htmlify(entry[:description])
+        entry[:html] = htmlify(entry[:description], keywords)
         entry[:stars] = load_stars(entry[:keyword])
       end
 
@@ -233,8 +240,9 @@ module Isuda
       keyword = params[:keyword] or halt(400)
 
       entry = db.xquery(%| select * from entry where keyword = ? |, keyword).first or halt(404)
+      keywords = select_keywords
       entry[:stars] = load_stars(entry[:keyword])
-      entry[:html] = htmlify(entry[:description])
+      entry[:html] = htmlify(entry[:description], keywords)
 
       locals = {
         entry: entry,
